@@ -48,6 +48,21 @@ def rmv_clm(dataset):
     dataset = ds
     return(dataset)
 
+def wind_pre_proc(dataset):
+    ds = dataset
+    # Reformat latitude and longitude to be consistent w observations
+    ds = ds.sortby(ds.latitude)
+    ds['longitude'] = ds['longitude'] + 360
+
+    # Apply land sea mask
+    ds['ewss'] = (ds['ewss'].where(ds.lsm < 0.1)) / (24 * 3600)
+    ds['ewss'] = (ds['ewss'].where(ds.latitude < 80))
+    ds['nsss'] = (ds['nsss'].where(ds.lsm < 0.1)) / (24 * 3600)
+    ds['nsss'] = (ds['nsss'].where(ds.latitude < 80))
+
+    dataset = ds
+    return (dataset)
+
 def seasonal_detrend(dataset):
     """
     Remove seasonal cycle (here defined as monthly mean) from time series of each variable

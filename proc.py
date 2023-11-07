@@ -3,7 +3,43 @@ import numpy as np
 import xarray as xr
 import warnings
 from eofs.xarray import Eof
+import metpy.calc as mpcalc
 
+def calc_wsc(dataset, u_stress, v_stress):
+    """
+    Computes wind stress curl from u/v components of wind stress
+    Inputs:
+    - dataset: xarray dataset containing time, latitude, and longitude dimensions that correspond to wind stress data
+    - u_stress: xarray data array containing eastward (x-direction) turbulent surface stress (wind stress)
+    - v_stress: xarray data array containing northward (y-direction) turbulent surface stress (wind stress)
+    Outputs:
+    - ds_wsc: xarray dataset containing data variable 'wsc' which is the curl of the winds stress vector provided
+    """
+    ds = dataset
+    tauy = v_stress.metpy.assign_crs(
+        grid_mapping_name='latitude_longitude',
+        earth_radius=6371229.0
+    )
+    taux = u_stress.metpy.assign_crs(
+        grid_mapping_name='latitude_longitude',
+        earth_radius=6371229.0
+    )
+    taux.attrs['units'] = "m/s"
+    tauy.attrs['units'] = "m/s"
+    wind_curl = mpcalc.vorticity(taux,tauy)
+    wind_curl = np.array(wind_curl)
+    wind_curl[wind_curl > 3e-7] = 3e-7
+    wind_curl[wind_curl < -3e-7] = -3e-7
+    wind_curl[wind_curl < -3e-7] = -3e-7
+    ds_wsc = xr.Dataset(
+        data_vars=dict(
+            wsc = (['time','latitude','longitude'], wind_curl)),
+        coords=dict(
+            time      = ds.time.data,
+            latitude  = ds.latitude.data,
+            longitude = ds.longitude.data,
+        ))
+    return(ds_wsc)
 def gs_index(dataset):
     """
     Calculate the Locations of Gulf Stream Indices using Terry Joyce's Maximum Standard Deviation Method (Pérez-Hernández and Joyce (2014))
