@@ -102,7 +102,7 @@ def tidy_read(file):
     Outputs:
     - ds: xarray dataset, formated in (time,lat,lon) dimensions with climatology, seasonal trend, and linear trend removed
     """
-    ds = read_file(f)
+    ds = read_file(file)
     ds = fmt_time(ds)
     ds = rmv_clm(ds)
     ds = seasonal_detrend(ds)
