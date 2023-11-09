@@ -1,5 +1,5 @@
 from proc import *
-from get_data import *
+from tidy_data import *
 import netCDF4 as nc
 import numpy as np
 import xarray as xr
