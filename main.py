@@ -1,4 +1,4 @@
-from proc import *
+from proj_utils import *
 from tidy_data import *
 import netCDF4 as nc
 import numpy as np
