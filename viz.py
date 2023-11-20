@@ -29,9 +29,9 @@ def ts_plot(x_data, y_data, label1='', x_data_2=[], y_data_2=[], label2='', xlab
     tit = plt.title(title, fontsize=20)
     if save == True:
         plt.savefig(sv_pth + sv_name + '.png', format='png', bbox_inches="tight")
+    plt.close()
 
-
-def acf_plot(acf, n_eff):
+def acf_plot(acf, n_eff,save=False,sv_pth=None, sv_name=None):
     fig = plt.figure(figsize=(12, 6))
 
     z_line = plt.axhline(0, color='r', linewidth=2)
@@ -48,10 +48,12 @@ def acf_plot(acf, n_eff):
     ylab = plt.ylabel('ACF', fontsize=18)
     ytix = plt.yticks(fontsize=18)
     xtix = plt.xticks(fontsize=18)
-
+    if save == True:
+        plt.savefig(sv_pth + sv_name + '.png', format='png', bbox_inches="tight")
+    plt.close()
 
 def spatial_plot(x_data, y_data, z_data, bthy_data=None, levels=None, x_gsi=None, y_gsi=None, region='NA',
-                 add_bathy=False, add_gsi=False):
+                 add_bathy=False, add_gsi=False,save=False,sv_pth=None, sv_name=None):
     # Choose region to plot
     if region == 'GS':
         bbox = [280, 308, 33, 46]
@@ -97,10 +99,12 @@ def spatial_plot(x_data, y_data, z_data, bthy_data=None, levels=None, x_gsi=None
     cbar = plt.colorbar(colorplot, fraction=0.02, pad=0.04, ticks=np.linspace(0, max_data, int(max_data / 10) + 1))
     cbar.set_label('Standard Deviation [cm]', size='20', labelpad=25)
     cbar.ax.tick_params(labelsize=20)
-
+    if save == True:
+        plt.savefig(sv_pth + sv_name + '.png', format='png', bbox_inches="tight")
+    plt.close()
 
 def spatial_plot_div(x_data, y_data, z_data, label='EOF', bthy_data=None, levels=None, region='GS', add_bathy=False,
-                     add_gsi=False):
+                     add_gsi=False,save=False,sv_pth=None, sv_name=None):
     # Choose region to plot
     if region == 'GS':
         bbox = [280, 308, 33, 46]
@@ -145,9 +149,11 @@ def spatial_plot_div(x_data, y_data, z_data, label='EOF', bthy_data=None, levels
 
     cbar.set_label(label, size='20', labelpad=25)
     cbar.ax.tick_params(labelsize=20)
+    if save == True:
+        plt.savefig(sv_pth + sv_name + '.png', format='png', bbox_inches="tight")
+    plt.close()
 
-
-def spatial_scatter(x_data, y_data, z_data, label='EOF', region='GS'):
+def spatial_scatter(x_data, y_data, z_data, label='EOF', region='GS',save=False,sv_pth=None, sv_name=None):
     # Choose region to plot
     if region == 'GS':
         bbox = [280, 308, 33, 46]
@@ -190,3 +196,27 @@ def spatial_scatter(x_data, y_data, z_data, label='EOF', region='GS'):
     cbar.set_ticklabels(ticklabels)
     cbar.set_label(label, size='20', labelpad=25)
     cbar.ax.tick_params(labelsize=20)
+    if save == True:
+        plt.savefig(sv_pth + sv_name + '.png', format='png', bbox_inches="tight")
+    plt.close()
+def eof_longitude(gsi_lon,eofs_gsi,save=False,sv_pth=None, sv_name=None):
+    fig    = plt.figure(figsize=(12,6))
+    eof1   = plt.plot(gsi_lon,eofs_gsi[0],color = 'k', label='EOF 1')
+    eof2   = plt.plot(gsi_lon,eofs_gsi[1],color = 'r', label='EOF 2')
+    eof3   = plt.plot(gsi_lon,eofs_gsi[2],color = 'g', label='EOF 3')
+    eof4   = plt.plot(gsi_lon,eofs_gsi[3],color = 'b', label='EOF 4')
+
+    ylab  = plt.ylabel('EOF Magnitude', fontsize=18)
+    xlab  = plt.xlabel('Longitude (˚)', fontsize=18)
+
+    xtix  = plt.yticks(fontsize=18)
+    ytix  = plt.xticks(fontsize=18)
+
+    ylim  = plt.ylim([-np.max(abs(eofs_gsi[0]))-0.1, np.max(abs(eofs_gsi[0]))+0.1])
+    xlim  = plt.xlim([np.min(gsi_lon[0]), np.max(gsi_lon[-1])])
+
+    zline  = plt.axhline(0,color='k', linewidth=2)
+    leg    = plt.legend()
+    if save == True:
+        plt.savefig(sv_pth + sv_name + '.png', format='png', bbox_inches="tight")
+    plt.close()

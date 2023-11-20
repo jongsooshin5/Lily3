@@ -84,7 +84,17 @@ def gs_index_joyce(dataset):
 
 
 def gs_index(dataset, adt):
-    # Get Gulf Stream Index Locations (Contour w Max Standard Deviation)
+    """
+    Get Gulf Stream Index Locations (Contour w Max Standard Deviation)
+    Inputs:
+    - dataset: containing longitude, latitude, sla, sla_std
+    - adt: dynamic topography contours
+    Returns:
+    - gsi_lon: longitudes of gulf stream index points
+    - gsi_lat: latitudes of gulf stream index points
+    - std_ts: time series of gulf stream index
+    - sla_ts_std: standard deviation of std_ts
+    """
     ds = dataset
     x, y = get_contour_info(ds.longitude, ds.latitude, abs(adt), contour_to_get=get_max_contour(ds, adt))
     subset_ind = []
