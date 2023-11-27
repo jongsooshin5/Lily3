@@ -7,23 +7,25 @@ import datetime as dt
 import xarray as xr
 import warnings
 
-fig_pth = '/Users/lillienders/Desktop/First Generals/Figures/Altimetry/'
+fig_pth = '/Users/lillienders/Desktop/First Generals/Figures/CESM-LENS/'
 fig_save = True
 """
-RUN ANALYSIS FOR OBS (ALTIMETRY)
+RUN ANALYSIS FOR MODEL (CESM-LENS)
 """
 # region: Calculations and Plots
 
-f = '/Users/lillienders/Desktop/First Generals/altimetry_sla_93_18.nc'
+f = '/Users/lillienders/Desktop/First Generals/cesm_sla_ens_01.nc'
+fig_pth = '/Users/lillienders/Desktop/First Generals/Figures/'
 ds = tidy_read(f)
-ds['adt'] = (['latitude', 'longitude'], get_contours(f))
-ds['sla_std'] = (['latitude', 'longitude'], np.nanmean(ds.sla_std.data, axis=0))
+ds = ds.sel(longitude=slice(279,310),latitude = slice(32,46),time = slice('1993-01-01','2017-12-01'))
+ds = linear_detrend(ds)
+
 # Calculate GSI using Joyce method
 gsi_lon_joyce, gsi_lat_joyce, sla_ts_joyce, sla_ts_std_joyce = gs_index_joyce(ds)
 gsi_norm_joyce = (sla_ts_joyce - np.nanmean(sla_ts_joyce))/sla_ts_std_joyce
 
 # Calculate GSI using isoline method
-gsi_lon, gsi_lat, sla_ts, sla_ts_std = gs_index(ds,ds['adt']*100)
+gsi_lon, gsi_lat, sla_ts, sla_ts_std = gs_index(ds,ds['adt'])
 gsi_norm = (sla_ts - np.nanmean(sla_ts))/sla_ts_std
 
 gsi_annual = smooth_data(gsi_norm)
@@ -60,10 +62,11 @@ sla_gsi_array = xr.DataArray(sla_gsi,
 
 eofs_gsi, pcs_gsi, per_var_gsi = calc_eofs(sla_gsi_array,num_modes)
 # end region
+
 # region: Plots
 # Figure (1): Spatial plot of standard deviation with maximum standard deviation isoline and location of GSI array
-spatial_plot(ds.longitude, ds.latitude, np.nanstd(ds.sla,axis=0)*100,bthy_data= abs(ds['adt'])*100,
-             levels = [get_max_contour(ds,ds['adt']*100)], x_gsi = gsi_lon, y_gsi = gsi_lat,
+spatial_plot(ds.longitude, ds.latitude, np.nanstd(ds.sla,axis=0),bthy_data= abs(ds['adt']),
+             levels = [get_max_contour(ds,ds['adt'])], x_gsi = gsi_lon, y_gsi = gsi_lat,
              region='GS', add_gsi = True,add_bathy=True, save=fig_save,sv_pth=fig_pth, sv_name='alt_spatial_std_gsi')
 
 # Figure (2): Time series of monthly and yearly GSI (isoline method)
@@ -105,8 +108,3 @@ for eof in range(num_modes):
 
 eof_longitude(gsi_lon,eofs_gsi, save=fig_save,sv_pth=fig_pth, sv_name='alt_eof_longitude_plt')
 # end region
-# region: PODS
-alt_gsi_sd = var_magnitude(ds,gsi_lon,gsi_lat)
-alt_damp_t  = damping_time_scale(acf)
-# end region
-

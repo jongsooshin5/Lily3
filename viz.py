@@ -28,7 +28,7 @@ def ts_plot(x_data, y_data, label1='', x_data_2=[], y_data_2=[], label2='', xlab
 
     tit = plt.title(title, fontsize=20)
     if save == True:
-        plt.savefig(sv_pth + sv_name + '.png', format='png', bbox_inches="tight")
+        plt.savefig(sv_pth + sv_name + '.png', format='png', bbox_inches="tight",dpi=500)
     plt.close()
 
 def acf_plot(acf, n_eff,save=False,sv_pth=None, sv_name=None):
@@ -49,7 +49,7 @@ def acf_plot(acf, n_eff,save=False,sv_pth=None, sv_name=None):
     ytix = plt.yticks(fontsize=18)
     xtix = plt.xticks(fontsize=18)
     if save == True:
-        plt.savefig(sv_pth + sv_name + '.png', format='png', bbox_inches="tight")
+        plt.savefig(sv_pth + sv_name + '.png', format='png', bbox_inches="tight",dpi=500)
     plt.close()
 
 def spatial_plot(x_data, y_data, z_data, bthy_data=None, levels=None, x_gsi=None, y_gsi=None, region='NA',
@@ -100,7 +100,7 @@ def spatial_plot(x_data, y_data, z_data, bthy_data=None, levels=None, x_gsi=None
     cbar.set_label('Standard Deviation [cm]', size='20', labelpad=25)
     cbar.ax.tick_params(labelsize=20)
     if save == True:
-        plt.savefig(sv_pth + sv_name + '.png', format='png', bbox_inches="tight")
+        plt.savefig(sv_pth + sv_name + '.png', format='png', bbox_inches="tight",dpi=500)
     plt.close()
 
 def spatial_plot_div(x_data, y_data, z_data, label='EOF', bthy_data=None, levels=None, region='GS', add_bathy=False,
@@ -150,7 +150,7 @@ def spatial_plot_div(x_data, y_data, z_data, label='EOF', bthy_data=None, levels
     cbar.set_label(label, size='20', labelpad=25)
     cbar.ax.tick_params(labelsize=20)
     if save == True:
-        plt.savefig(sv_pth + sv_name + '.png', format='png', bbox_inches="tight")
+        plt.savefig(sv_pth + sv_name + '.png', format='png', bbox_inches="tight",dpi=500)
     plt.close()
 
 def spatial_scatter(x_data, y_data, z_data, label='EOF', region='GS',save=False,sv_pth=None, sv_name=None):
@@ -197,7 +197,7 @@ def spatial_scatter(x_data, y_data, z_data, label='EOF', region='GS',save=False,
     cbar.set_label(label, size='20', labelpad=25)
     cbar.ax.tick_params(labelsize=20)
     if save == True:
-        plt.savefig(sv_pth + sv_name + '.png', format='png', bbox_inches="tight")
+        plt.savefig(sv_pth + sv_name + '.png', format='png', bbox_inches="tight",dpi=500)
     plt.close()
 def eof_longitude(gsi_lon,eofs_gsi,save=False,sv_pth=None, sv_name=None):
     fig    = plt.figure(figsize=(12,6))
@@ -218,5 +218,5 @@ def eof_longitude(gsi_lon,eofs_gsi,save=False,sv_pth=None, sv_name=None):
     zline  = plt.axhline(0,color='k', linewidth=2)
     leg    = plt.legend()
     if save == True:
-        plt.savefig(sv_pth + sv_name + '.png', format='png', bbox_inches="tight")
+        plt.savefig(sv_pth + sv_name + '.png', format='png', bbox_inches="tight",dpi=500)
     plt.close()

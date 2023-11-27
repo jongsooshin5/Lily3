@@ -63,14 +63,15 @@ def seasonal_detrend(dataset):
     ds = dataset
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
-        for var in list(ds.data_vars):
-            mn_av = np.zeros((12, len(ds.latitude), len(ds.longitude)))
-            mn_av[:] = np.nan
-            for mn in range(12):
-                mn_av[mn, :, :] = np.nanmean(ds[var][mn::12, :, :], axis=0)
-            mn_av = np.tile(mn_av, (int(len(ds[var]) / 12), 1, 1))
-            detrend_temp = ds[var] - mn_av
-            ds[var] = detrend_temp
+        var = 'sla'
+        # for var in list(ds.data_vars):
+        mn_av = np.zeros((12, len(ds.latitude), len(ds.longitude)))
+        mn_av[:] = np.nan
+        for mn in range(12):
+            mn_av[mn, :, :] = np.nanmean(ds[var][mn::12, :, :], axis=0)
+        mn_av = np.tile(mn_av, (int(len(ds[var]) / 12), 1, 1))
+        detrend_temp = ds[var] - mn_av
+        ds[var] = detrend_temp
     dataset = ds
     return (dataset)
 
@@ -83,21 +84,22 @@ def linear_detrend(dataset):
     Outputs:
      - dataset: xarray dataset, formated in (time,lat,lon) dimensions with linear trend removed
     """
-    ds = dataset
-    ds_poly = ds.polyfit(dim='time', deg=1)
-    indices = np.arange(len(ds.time))
-    for var in list(ds.data_vars):
-        fit_string = var + '_polyfit_coefficients'
-        slope = np.array(ds_poly[fit_string][0]).flatten()
-        intercept = np.array(ds_poly[fit_string][1]).flatten()
-        lin_fit = np.zeros((len(ds.time), len(slope)))
-        for loc in range(len(slope)):
-            lin_fit[:, loc] = slope[loc] * indices + intercept[loc]
-        lin_fit = np.reshape(lin_fit, (len(ds.time), len(ds.latitude), len(ds.longitude)))
-        detrended_series = ds[var] - lin_fit
-        ds[var] = detrended_series
-    dataset = ds
-    return (ds)
+    ds_temp = dataset
+    time_idx = np.linspace(0, len(ds_temp.time) - 1, len(ds_temp.time))
+    ds_temp['time'] = time_idx
+    ds_poly = ds_temp.polyfit(dim='time', deg=1)
+    indices = np.arange(len(ds_temp.time))
+    var = 'sla'
+    fit_string = var + '_polyfit_coefficients'
+    slope = np.array(ds_poly[fit_string][0]).flatten()
+    intercept = np.array(ds_poly[fit_string][1]).flatten()
+    lin_fit = np.zeros((len(ds_temp.time), len(slope)))
+    for loc in range(len(slope)):
+        lin_fit[:, loc] = slope[loc] * indices + intercept[loc]
+    lin_fit = np.reshape(lin_fit, (len(ds_temp.time), len(ds_temp.latitude), len(ds_temp.longitude)))
+    detrended_series = ds_temp[var] - lin_fit
+    dataset[var] = detrended_series
+    return (dataset)
 
 
 def wind_pre_proc(dataset):
@@ -148,5 +150,4 @@ def tidy_read(file):
     ds = fmt_time(ds)
     ds = rmv_clm(ds)
     ds = seasonal_detrend(ds)
-    ds = linear_detrend(ds)
     return ds
