@@ -1,48 +1,97 @@
-from proc import *
-from get_data import *
-import netCDF4 as nc
-import numpy as np
-import xarray as xr
-import matplotlib.pyplot as plt
-import warnings
+from run_cesm_lens import *
+from run_altimetry import *
+from run_cesm_ihesp import *
 
-"""
-RUN ANALYSIS FOR OBS (ALTIMETRY)
-"""
-f_obs = '/Users/lillienders/Desktop/altimetry_sla_93_18.nc'
-ds_obs = xr.open_dataset(f_obs) # Read netcdf data into xarray
-ds_obs = seasonal_detrend(ds_obs)
-gsi_lon_obs, gsi_lat_obs, sla_ts_obs, sla_ts_std_obs = gs_index(ds_obs)
+gsi_sd_alt,  damp_t_alt, crossing_alt,vars_alt = run_altimetry()
 
-plt.plot(sla_ts_obs)
+gsi_sd_lens, damp_t_lens,crossing_lens,vars_lens = run_cesm_lens()
+gsi_sd_ihesp,  damp_t_ihesp,crossing_ihesp,vars_ihesp  = run_cesm_ihesp()
+
+print(crossing_lens)
+print(vars_lens)
+#print(crossing_alt)
+#print(vars_alt)
+#print(crossing_ihesp)
+#print(vars_ihesp)
+print('Done!')
+
+
+fig = plt.figure(figsize=(20,8))
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize = (16,8))
+
+ax1.hist([crossing_ihesp[:,0], crossing_lens[:,0]],color=['darkred','darksalmon'],label=['CESM-HR','CESM-LE'],alpha=0.6,stacked=True)
+ax1.hist(crossing_alt[0],color='k',rwidth = 5,label='Altimetry',bins=1,alpha=1)
+
+
+ax2.hist([vars_ihesp[:,0]*100, vars_lens[:,0]*100],color=['darkred','darksalmon'],label=['CESM-HR','CESM-LE'],alpha=0.6,stacked=True)
+ax2.hist(vars_alt[0]*100,color='k',rwidth = 5,label='Altimetry',bins=1,alpha=1)
+
+
+ax1.set_title('Number of Zero Crossings: Fist EOF of GSI',fontsize=18)
+ax1.set_xlabel('E-Number of Zero Crossings',fontsize=18)
+ax1.set_ylabel('Bin Count', fontsize=18)
+ax1.legend(fontsize=15,loc='upper center')
+ax1.yaxis.set_tick_params(labelsize=15)
+ax1.xaxis.set_tick_params(labelsize=15)
+
+ax2.set_title('Percent Variance Explained: First EOF of GSI',fontsize=18)
+ax2.set_xlabel('Percent Variance',fontsize=18)
+ax2.set_ylabel('Bin Count', fontsize=18)
+ax2.legend(fontsize=15,loc='upper center')
+ax2.yaxis.set_tick_params(labelsize=15)
+ax2.xaxis.set_tick_params(labelsize=15)
 plt.show()
-"""
-RUN ANALYSIS FOR CESM-LE (UNINITIALIZED)
-"""
-f_le = '/Users/lillienders/Desktop/cesm_sla_full_ts.nc'
-ds_le = xr.open_dataset(f_le) # Read netcdf data into xarray
-ds_le = ds_le.sel(year=slice(1985,2005))
-ds_le = seasonal_detrend(ds_le)
-ds_le = fmt_time(dataset = ds_le)
-ds_le = ds_le.sel(longitude=slice(285, 315),latitude=slice(33,46))
 
-# Gulf Stream Index
-gsi_lon_le, gsi_lat_le, sla_ts_le, sla_ts_std_le = gs_index(ds_le)
 
-# EOFs for all ensembles
-sla = ds_le.to_array(dim='sla_deseasonalized')[-1]
-modes = 3
-eofs = np.zeros((len(ds_le.Ensemble),modes,len(ds_le.latitude),len(ds_le.longitude)))
-pcs = np.zeros((len(ds_le.Ensemble),len(ds_le.time),modes))
-per_var = np.zeros((len(ds_le.Ensemble),565))
-for ens in range(len(ds_le.Ensemble)):
-    sla_ens = np.squeeze(sla[ens,:,:,:])
-    eofs[ens,:,:], pcs[ens,:,:], per_var[ens,:] = calc_eofs(sla_ens,num_modes=modes)
+fig = plt.figure(figsize=(20,8))
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize = (16,8))
 
-# Mean EOFs
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore", category=RuntimeWarning)
-    ens_mn_eof = np.nanmean(eofs, axis = 0)
-    ens_mn_pcs = np.nanmean(pcs, axis = 0)
-    ens_mn_per_var = np.nanmean(per_var, axis = 0)
+ax1.hist([crossing_ihesp[:,1], crossing_lens[:,1]],color=['darkred','darksalmon'],label=['CESM-HR','CESM-LE'],alpha=0.6,stacked=True)
+ax1.hist(crossing_alt[1],color='k',rwidth = 5,label='Altimetry',bins=1,alpha=1)
 
+
+ax2.hist([vars_ihesp[:,1]*100, vars_lens[:,1]*100],color=['darkred','darksalmon'],label=['CESM-HR','CESM-LE'],alpha=0.6,stacked=True)
+ax2.hist(vars_alt[1]*100,color='k',rwidth = 5,label='Altimetry',bins=1,alpha=1)
+
+
+ax1.set_title('Number of Zero Crossings: Second EOF of GSI',fontsize=18)
+ax1.set_xlabel('E-Number of Zero Crossings',fontsize=18)
+ax1.set_ylabel('Bin Count', fontsize=18)
+ax1.legend(fontsize=15,loc='upper center')
+ax1.yaxis.set_tick_params(labelsize=15)
+ax1.xaxis.set_tick_params(labelsize=15)
+
+ax2.set_title('Percent Variance Explained: Second EOF of GSI',fontsize=18)
+ax2.set_xlabel('Percent Variance',fontsize=18)
+ax2.set_ylabel('Bin Count', fontsize=18)
+ax2.legend(fontsize=15,loc='upper center')
+ax2.yaxis.set_tick_params(labelsize=15)
+ax2.xaxis.set_tick_params(labelsize=15)
+plt.show()
+
+
+fig = plt.figure(figsize=(20,8))
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize = (16,8))
+
+ax1.hist([crossing_ihesp[:,2], crossing_lens[:,0]],color=['darkred','darksalmon'],label=['CESM-HR','CESM-LE'],alpha=0.6,stacked=True)
+ax1.hist(crossing_alt[2],color='k',rwidth = 5,label='Altimetry',bins=1,alpha=1)
+
+
+ax2.hist([vars_ihesp[:,2]*100, vars_lens[:,2]*100],color=['darkred','darksalmon'],label=['CESM-HR','CESM-LE'],alpha=0.6,stacked=True)
+ax2.hist(vars_alt[2]*100,color='k',rwidth = 5,label='Altimetry',bins=1,alpha=1)
+
+
+ax1.set_title('Number of Zero Crossings: Third EOF of GSI',fontsize=18)
+ax1.set_xlabel('E-Number of Zero Crossings',fontsize=18)
+ax1.set_ylabel('Bin Count', fontsize=18)
+ax1.legend(fontsize=15,loc='upper center')
+ax1.yaxis.set_tick_params(labelsize=15)
+ax1.xaxis.set_tick_params(labelsize=15)
+
+ax2.set_title('Percent Variance Explained: Third EOF of GSI',fontsize=18)
+ax2.set_xlabel('Percent Variance',fontsize=18)
+ax2.set_ylabel('Bin Count', fontsize=18)
+ax2.legend(fontsize=15,loc='upper center')
+ax2.yaxis.set_tick_params(labelsize=15)
+ax2.xaxis.set_tick_params(labelsize=15)
+plt.show()
