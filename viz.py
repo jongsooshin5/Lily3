@@ -22,8 +22,13 @@ def ts_plot(x_data, y_data, label1='', x_data_2=[], y_data_2=[], label2='', xlab
     ylab = plt.ylabel(ylab, fontsize=18)
     xtix = plt.yticks(fontsize=18)
     ytix = plt.xticks(fontsize=18)
-
-    ylim = plt.ylim([-np.max(abs(y_data)) - 0.1, np.max(abs(y_data)) + 0.1])
+    if y_data_2 != []:
+        if max(abs(y_data_2)) > max(abs(y_data)):
+            ylim = plt.ylim([-np.max(abs(y_data_2)) - 0.1, np.max(abs(y_data_2)) + 0.1])
+        else:
+            ylim = plt.ylim([-np.max(abs(y_data)) - 0.1, np.max(abs(y_data)) + 0.1])
+    else:
+        ylim = plt.ylim([-np.max(abs(y_data)) - 0.1, np.max(abs(y_data)) + 0.1])
     xlim = plt.xlim([np.min(x_data), np.max(x_data)])
 
     tit = plt.title(title, fontsize=20)
@@ -96,14 +101,14 @@ def spatial_plot(x_data, y_data, z_data, bthy_data=None, levels=None, x_gsi=None
     gl.ylabel_style = {'size': 20}
     # plt.title('Standard Deviation: Altimetry (1992-2012)',fontsize=20)
 
-    cbar = plt.colorbar(colorplot, fraction=0.02, pad=0.04, ticks=np.linspace(0, max_data, int(max_data / 10) + 1))
+    cbar = plt.colorbar(colorplot, fraction=0.02, pad=0.04, ticks=np.linspace(0, max_data, int(max_data) + 1))
     cbar.set_label('Standard Deviation [cm]', size='20', labelpad=25)
     cbar.ax.tick_params(labelsize=20)
     if save == True:
         plt.savefig(sv_pth + sv_name + '.png', format='png', bbox_inches="tight",dpi=500)
     plt.close()
 
-def spatial_plot_div(x_data, y_data, z_data, label='EOF', bthy_data=None, levels=None, region='GS', add_bathy=False,
+def spatial_plot_div(x_data, y_data, z_data, title = '', label='EOF', bthy_data=None, levels=None, region='GS', add_bathy=False,
                      add_gsi=False,save=False,sv_pth=None, sv_name=None):
     # Choose region to plot
     if region == 'GS':
@@ -140,7 +145,8 @@ def spatial_plot_div(x_data, y_data, z_data, label='EOF', bthy_data=None, levels
     plt.ylabel('Longitude', fontsize=25)
     gl.xlabel_style = {'size': 20}
     gl.ylabel_style = {'size': 20}
-    # plt.title('Standard Deviation: Altimetry (1992-2012)',fontsize=20)
+
+    plt.title(title,fontsize=20)
 
     cbar = plt.colorbar(colorplot, fraction=0.02, pad=0.04, ticks=np.linspace(-max_data, max_data, 9))
     ticks = cbar.get_ticks()
@@ -153,7 +159,7 @@ def spatial_plot_div(x_data, y_data, z_data, label='EOF', bthy_data=None, levels
         plt.savefig(sv_pth + sv_name + '.png', format='png', bbox_inches="tight",dpi=500)
     plt.close()
 
-def spatial_scatter(x_data, y_data, z_data, label='EOF', region='GS',save=False,sv_pth=None, sv_name=None):
+def spatial_scatter(x_data, y_data, z_data, title = '', label='EOF', region='GS',save=False,sv_pth=None, sv_name=None):
     # Choose region to plot
     if region == 'GS':
         bbox = [280, 308, 33, 46]
@@ -183,7 +189,7 @@ def spatial_scatter(x_data, y_data, z_data, label='EOF', region='GS',save=False,
     max_data = 0.40
     scat = plt.scatter(x_data, y_data, s=abs(z_data * 500), c=z_data, vmin=-max_data, vmax=max_data, cmap='cmo.balance')
 
-    # plt.title('Standard Deviation: Altimetry (1992-2012)',fontsize=20)
+    plt.title(title,fontsize=20)
     ax.imshow(np.tile(np.array([[[255, 255, 255]]],
                                dtype=np.uint8), [2, 2, 1]),
               origin='upper',

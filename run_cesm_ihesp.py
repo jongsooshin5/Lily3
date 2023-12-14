@@ -7,24 +7,25 @@ import datetime as dt
 import xarray as xr
 import warnings
 
-def run_cesm_lens():
-    ens_list = np.hstack((np.linspace(1,35,35), np.linspace(101,105,5)))
-    ens_list = [int(x) for x in ens_list]
+def run_cesm_ihesp():
+    ens_list = list(range(1,27))
     ens_list = [str(x) for x in ens_list]
     ens_list = [str(x).zfill(2) for x in ens_list]
 
-    fig_save = True
+    fig_save = False
+
     alt_gsi_sd = np.zeros(len(ens_list))
     alt_damp_t = np.zeros(len(ens_list))
-    alt_cross  = np.zeros((len(ens_list),3))
-    alt_var    = np.zeros((len(ens_list),3))
+    alt_cross = np.zeros((len(ens_list),3))
+    alt_var = np.zeros((len(ens_list),3))
+
     for e in range(len(ens_list)):
-        print('e = ' + str(e + 1))
+        print('e = ' + str(e+1))
         ens = ens_list[e]
-        fig_pth = '/Users/lillienders/Desktop/First Generals/Figures/CESM-LENS/Ens_' + str(ens) + '/'
-        f = '/Users/lillienders/Desktop/First Generals/Data/LENS/Ensembles/cesm_sla_ens_' + ens + '.nc'
+        fig_pth = '/Users/lillienders/Desktop/First Generals/Figures/CESM-iHESP/Ens_' + ens + '/'
+        f = '/Users/lillienders/Desktop/First Generals/Data/iHESP/Ensembles/cesm_ihesp_ens_' + ens + '.nc'
         ds = tidy_read(f)
-        ds = ds.sel(longitude=slice(279, 310), latitude=slice(32, 46), time=slice('1993-01-01', '2017-12-01'))
+        #ds = ds.sel(longitude=slice(279, 310), latitude=slice(32, 46), time=slice('1993-01-01', '2017-12-01'))
         ds = linear_detrend(ds)
 
         # Calculate GSI using Joyce method
@@ -120,4 +121,5 @@ def run_cesm_lens():
         alt_gsi_sd[e] = var_magnitude(ds,gsi_lon,gsi_lat)
         alt_damp_t[e]  = damping_time_scale(acf)
         alt_cross[e,:], alt_var[e,:] = eof_crossings(eofs_gsi, per_var_gsi)
-    return(alt_gsi_sd, alt_damp_t,alt_cross, alt_var)
+
+    return(alt_gsi_sd,alt_damp_t,alt_cross, alt_var)

@@ -47,10 +47,14 @@ def gs_index_joyce(dataset):
     return (gsi_lon, gsi_lat, sla_ts, sla_ts_std)
 
 
-def gs_index(dataset, adt):
+def gs_index(dataset, adt, alt = False):
     # Get Gulf Stream Index Locations (Contour w Max Standard Deviation)
     ds = dataset
-    x, y = get_contour_info(ds.longitude, ds.latitude, abs(adt), contour_to_get=get_max_contour(ds, adt))
+    if alt == True:
+        x, y = get_contour_info(ds.longitude, ds.latitude, abs(adt),
+                                contour_to_get=get_max_contour(ds, adt, contours_to_try = np.linspace(30, 50, 21)))
+    else:
+        x, y = get_contour_info(ds.longitude, ds.latitude, abs(adt), contour_to_get=get_max_contour(ds, adt))
     subset_ind = []
     for k in np.linspace(-70, -55, 16):
         subset_ind.append(np.nanargmin(abs((x - 360) - k)))
@@ -70,10 +74,9 @@ def gs_index(dataset, adt):
     return (gsi_lon, gsi_lat, sla_ts, sla_ts_std)
 
 
-def get_max_contour(dataset, adt):
+def get_max_contour(dataset, adt, contours_to_try = np.linspace(5, 30, 26)):
     ds = dataset.sel(longitude=slice(290, 308), latitude=slice(36, 45))
     std_field = np.nanstd(ds.sla, axis=0)
-    contours_to_try = np.linspace(33, 47, 15)
     std_contours = np.zeros(len(contours_to_try))
     for c in range(len(contours_to_try)):
         x_temp, y_temp = get_contour_info(ds.longitude, ds.latitude, abs(adt), contour_to_get=int(contours_to_try[c]))
@@ -81,7 +84,7 @@ def get_max_contour(dataset, adt):
         for x in range(len(x_temp)):
             temp = temp + std_field[
                 np.nanargmin(abs(ds.latitude.data - y_temp[x])), np.nanargmin(abs(ds.longitude.data - x_temp[x]))]
-        std_contours[c] = temp
+        std_contours[c] = temp/len(x_temp)
     contour_to_use = int(contours_to_try[np.nanargmax(std_contours)])
     return (contour_to_use)
 

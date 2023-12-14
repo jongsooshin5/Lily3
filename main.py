@@ -1,112 +1,97 @@
-from proj_utils import *
-from tidy_data import *
-from proj_pods import *
-from viz import *
-import numpy as np
-import datetime as dt
-import xarray as xr
-import warnings
+from run_cesm_lens import *
+from run_altimetry import *
+from run_cesm_ihesp import *
 
-fig_pth = '/Users/lillienders/Desktop/First Generals/Figures/Altimetry/'
-fig_save = True
-"""
-RUN ANALYSIS FOR OBS (ALTIMETRY)
-"""
-# region: Calculations and Plots
+gsi_sd_alt,  damp_t_alt, crossing_alt,vars_alt = run_altimetry()
 
-f = '/Users/lillienders/Desktop/First Generals/altimetry_sla_93_18.nc'
-ds = tidy_read(f)
-ds['adt'] = (['latitude', 'longitude'], get_contours(f))
-ds['sla_std'] = (['latitude', 'longitude'], np.nanmean(ds.sla_std.data, axis=0))
-# Calculate GSI using Joyce method
-gsi_lon_joyce, gsi_lat_joyce, sla_ts_joyce, sla_ts_std_joyce = gs_index_joyce(ds)
-gsi_norm_joyce = (sla_ts_joyce - np.nanmean(sla_ts_joyce))/sla_ts_std_joyce
+gsi_sd_lens, damp_t_lens,crossing_lens,vars_lens = run_cesm_lens()
+gsi_sd_ihesp,  damp_t_ihesp,crossing_ihesp,vars_ihesp  = run_cesm_ihesp()
 
-# Calculate GSI using isoline method
-gsi_lon, gsi_lat, sla_ts, sla_ts_std = gs_index(ds,ds['adt']*100)
-gsi_norm = (sla_ts - np.nanmean(sla_ts))/sla_ts_std
-
-gsi_annual = smooth_data(gsi_norm)
-gsi_years  = []
-for yr in range(1,26):
-    gsi_years.append(dt.datetime(int(1993+yr),1,1))
-
-# Correlate GSI methods
-gsi_corr = np.corrcoef(gsi_norm,gsi_norm_joyce)[0,1]
-
-# Calculate ACF, number of effective degrees of freedom
-acf, n_eff = get_acf(gsi_norm)
-
-# Calculate EOFs: Full spatial domain
-num_modes = 4
-bbox      = [280, 308, 33, 46]
-adt_slice = ds['adt'][np.nanargmin(abs(ds.latitude-bbox[2])):np.nanargmin(abs(ds.latitude-bbox[3])),
-                     np.nanargmin(abs(ds.longitude-bbox[0])):np.nanargmin(abs(ds.longitude-bbox[1]))]
-gs_slice  = ds.isel(longitude = slice(np.nanargmin(abs(ds.longitude-bbox[0])), np.nanargmin(abs(ds.longitude-bbox[1]))),
-                    latitude  = slice(np.nanargmin(abs(ds.latitude-bbox[2])), np.nanargmin(abs(ds.latitude-bbox[3]))))
-eofs, pcs, per_var = calc_eofs(gs_slice['sla'],num_modes)
-pcs  = - pcs
-eofs = - eofs
-
-# Calculate EOFS: At GSI array
-sla_gsi = np.zeros((len(ds.time),len(gsi_lon)))
-for t in range(len(ds.time)):
-    for x in range(len(gsi_lon)):
-        sla_gsi[t,x] = ds['sla'][t,np.nanargmin(abs(ds.latitude.data - gsi_lat[x])), np.nanargmin(abs(ds.longitude.data - gsi_lon[x]))]
-
-sla_gsi_array = xr.DataArray(sla_gsi,
-                             coords = {'time': ds.time,'lon': gsi_lat},
-                             dims   = ['time', 'lon'])
-
-eofs_gsi, pcs_gsi, per_var_gsi = calc_eofs(sla_gsi_array,num_modes)
-# end region
-# region: Plots
-# Figure (1): Spatial plot of standard deviation with maximum standard deviation isoline and location of GSI array
-spatial_plot(ds.longitude, ds.latitude, np.nanstd(ds.sla,axis=0)*100,bthy_data= abs(ds['adt'])*100,
-             levels = [get_max_contour(ds,ds['adt']*100)], x_gsi = gsi_lon, y_gsi = gsi_lat,
-             region='GS', add_gsi = True,add_bathy=True, save=fig_save,sv_pth=fig_pth, sv_name='alt_spatial_std_gsi')
-
-# Figure (2): Time series of monthly and yearly GSI (isoline method)
-ts_plot(ds.time, gsi_norm, label1 = 'Monthly Index', x_data_2 = gsi_years, y_data_2 = gsi_annual,label2 = 'Annual Index',
-        xlab = 'Year', ylab = 'GSI', title = 'Normalized GSI',save=fig_save,sv_pth=fig_pth, sv_name='alt_gsi_monthly_annual')
-
-# Figure (3): Time series of GSI from Joyce and isoline methods
-ts_plot(ds.time, gsi_norm, label1 = 'Isoline Method', x_data_2 = ds.time, y_data_2 = gsi_norm_joyce,label2 = 'Joyce Method',
-        xlab = 'Year', ylab = 'GSI', title = 'GSI Method Comparison (r = ' + '%1.3f' % gsi_corr + ')',
-        save=fig_save,sv_pth=fig_pth, sv_name='alt_gsi_joyce_isoline')
-
-# Figure (4): ACF of GSI timeseries
-acf_plot(acf,n_eff,save=fig_save,sv_pth=fig_pth, sv_name='alt_acf')
-
-# Figure (5): Spatial maps of EOFs
-# Figure (6): Time series of principal components, GSI
-# Figure (7): Spatial maps of EOFs at GSI array
-# Figure (8): Time series of principal components at GSI array, GSI
-
-for eof in range(num_modes):
-    pc_to_plot = eof+1
-    corr = np.corrcoef(pcs[:,pc_to_plot-1],gsi_norm)[0,1]
-    corr_gsi = np.corrcoef(pcs_gsi[:, pc_to_plot - 1], gsi_norm)[0, 1]
-
-    spatial_plot_div(gs_slice.longitude, gs_slice.latitude, eofs[pc_to_plot-1], label = 'EOF' + str(pc_to_plot), bthy_data= abs(adt_slice)*100,
-                 levels = 10, add_bathy=fig_save, save=True,sv_pth=fig_pth, sv_name='alt_spatial_eof_' + str(pc_to_plot))
-
-    ts_plot(ds.time, pcs[:,pc_to_plot-1],label1 = 'PC' + str(pc_to_plot),x_data_2 = ds.time, y_data_2 = gsi_norm, label2= 'GSI',
-            xlab = 'Year', ylab = 'PC' + str(pc_to_plot), title = 'PC' +str(pc_to_plot) + ' v GSI (r = ' + '%1.3f' % corr + ')',
-            save=fig_save,sv_pth=fig_pth, sv_name='alt_tseries_pc_' + str(pc_to_plot))
-
-    spatial_scatter(gsi_lon,gsi_lat,eofs_gsi[pc_to_plot-1],label = 'EOF' + str(pc_to_plot),
-                    save=fig_save,sv_pth=fig_pth, sv_name='alt_spatial_gsi_eof_' + str(pc_to_plot))
+print(crossing_lens)
+print(vars_lens)
+#print(crossing_alt)
+#print(vars_alt)
+#print(crossing_ihesp)
+#print(vars_ihesp)
+print('Done!')
 
 
-    ts_plot(ds.time, pcs_gsi[:,pc_to_plot-1],label1 = 'PC' + str(pc_to_plot),x_data_2 = ds.time, y_data_2 = gsi_norm, label2= 'GSI',
-            xlab = 'Year', ylab = 'PC' + str(pc_to_plot), title = 'PC' +str(pc_to_plot) + ' v GSI (r = ' + '%1.3f' % corr_gsi + ')',
-            save=fig_save,sv_pth=fig_pth, sv_name='alt_tseries_gsi_pc_' + str(pc_to_plot))
+fig = plt.figure(figsize=(20,8))
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize = (16,8))
 
-eof_longitude(gsi_lon,eofs_gsi, save=fig_save,sv_pth=fig_pth, sv_name='alt_eof_longitude_plt')
-# end region
-# region: PODS
-alt_gsi_sd = var_magnitude(ds,gsi_lon,gsi_lat)
-alt_damp_t  = damping_time_scale(acf)
-# end region
+ax1.hist([crossing_ihesp[:,0], crossing_lens[:,0]],color=['darkred','darksalmon'],label=['CESM-HR','CESM-LE'],alpha=0.6,stacked=True)
+ax1.hist(crossing_alt[0],color='k',rwidth = 5,label='Altimetry',bins=1,alpha=1)
 
+
+ax2.hist([vars_ihesp[:,0]*100, vars_lens[:,0]*100],color=['darkred','darksalmon'],label=['CESM-HR','CESM-LE'],alpha=0.6,stacked=True)
+ax2.hist(vars_alt[0]*100,color='k',rwidth = 5,label='Altimetry',bins=1,alpha=1)
+
+
+ax1.set_title('Number of Zero Crossings: Fist EOF of GSI',fontsize=18)
+ax1.set_xlabel('E-Number of Zero Crossings',fontsize=18)
+ax1.set_ylabel('Bin Count', fontsize=18)
+ax1.legend(fontsize=15,loc='upper center')
+ax1.yaxis.set_tick_params(labelsize=15)
+ax1.xaxis.set_tick_params(labelsize=15)
+
+ax2.set_title('Percent Variance Explained: First EOF of GSI',fontsize=18)
+ax2.set_xlabel('Percent Variance',fontsize=18)
+ax2.set_ylabel('Bin Count', fontsize=18)
+ax2.legend(fontsize=15,loc='upper center')
+ax2.yaxis.set_tick_params(labelsize=15)
+ax2.xaxis.set_tick_params(labelsize=15)
+plt.show()
+
+
+fig = plt.figure(figsize=(20,8))
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize = (16,8))
+
+ax1.hist([crossing_ihesp[:,1], crossing_lens[:,1]],color=['darkred','darksalmon'],label=['CESM-HR','CESM-LE'],alpha=0.6,stacked=True)
+ax1.hist(crossing_alt[1],color='k',rwidth = 5,label='Altimetry',bins=1,alpha=1)
+
+
+ax2.hist([vars_ihesp[:,1]*100, vars_lens[:,1]*100],color=['darkred','darksalmon'],label=['CESM-HR','CESM-LE'],alpha=0.6,stacked=True)
+ax2.hist(vars_alt[1]*100,color='k',rwidth = 5,label='Altimetry',bins=1,alpha=1)
+
+
+ax1.set_title('Number of Zero Crossings: Second EOF of GSI',fontsize=18)
+ax1.set_xlabel('E-Number of Zero Crossings',fontsize=18)
+ax1.set_ylabel('Bin Count', fontsize=18)
+ax1.legend(fontsize=15,loc='upper center')
+ax1.yaxis.set_tick_params(labelsize=15)
+ax1.xaxis.set_tick_params(labelsize=15)
+
+ax2.set_title('Percent Variance Explained: Second EOF of GSI',fontsize=18)
+ax2.set_xlabel('Percent Variance',fontsize=18)
+ax2.set_ylabel('Bin Count', fontsize=18)
+ax2.legend(fontsize=15,loc='upper center')
+ax2.yaxis.set_tick_params(labelsize=15)
+ax2.xaxis.set_tick_params(labelsize=15)
+plt.show()
+
+
+fig = plt.figure(figsize=(20,8))
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize = (16,8))
+
+ax1.hist([crossing_ihesp[:,2], crossing_lens[:,0]],color=['darkred','darksalmon'],label=['CESM-HR','CESM-LE'],alpha=0.6,stacked=True)
+ax1.hist(crossing_alt[2],color='k',rwidth = 5,label='Altimetry',bins=1,alpha=1)
+
+
+ax2.hist([vars_ihesp[:,2]*100, vars_lens[:,2]*100],color=['darkred','darksalmon'],label=['CESM-HR','CESM-LE'],alpha=0.6,stacked=True)
+ax2.hist(vars_alt[2]*100,color='k',rwidth = 5,label='Altimetry',bins=1,alpha=1)
+
+
+ax1.set_title('Number of Zero Crossings: Third EOF of GSI',fontsize=18)
+ax1.set_xlabel('E-Number of Zero Crossings',fontsize=18)
+ax1.set_ylabel('Bin Count', fontsize=18)
+ax1.legend(fontsize=15,loc='upper center')
+ax1.yaxis.set_tick_params(labelsize=15)
+ax1.xaxis.set_tick_params(labelsize=15)
+
+ax2.set_title('Percent Variance Explained: Third EOF of GSI',fontsize=18)
+ax2.set_xlabel('Percent Variance',fontsize=18)
+ax2.set_ylabel('Bin Count', fontsize=18)
+ax2.legend(fontsize=15,loc='upper center')
+ax2.yaxis.set_tick_params(labelsize=15)
+ax2.xaxis.set_tick_params(labelsize=15)
+plt.show()
