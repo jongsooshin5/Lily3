@@ -12,12 +12,14 @@ def run_cesm_ihesp():
     ens_list = [str(x) for x in ens_list]
     ens_list = [str(x).zfill(2) for x in ens_list]
 
-    fig_save = False
+    fig_save = True
 
     alt_gsi_sd = np.zeros(len(ens_list))
     alt_damp_t = np.zeros(len(ens_list))
+    alt_damp_s = np.zeros(len(ens_list))
     alt_cross = np.zeros((len(ens_list),3))
     alt_var = np.zeros((len(ens_list),3))
+    acf_spatial = np.zeros((len(ens_list), 16))
 
     for e in range(len(ens_list)):
         print('e = ' + str(e+1))
@@ -69,6 +71,9 @@ def run_cesm_ihesp():
                                      dims   = ['time', 'lon'])
 
         eofs_gsi, pcs_gsi, per_var_gsi = calc_eofs(sla_gsi_array,num_modes)
+        acf_spatial[e,:], n_eff_spatial = get_acf(np.nanmean(sla_gsi,axis=0))
+        #acf_spatial[e,:], n_eff_spatial = get_acf(eofs_gsi[0, :])
+
         # end region
 
         # region: Plots
@@ -88,6 +93,7 @@ def run_cesm_ihesp():
 
         # Figure (4): ACF of GSI timeseries
         acf_plot(acf,n_eff,save=fig_save,sv_pth=fig_pth, sv_name='alt_acf')
+        acf_plot(acf_spatial[e,:], n_eff_spatial, save=fig_save, sv_pth=fig_pth, sv_name='alt_acf_spatial')
 
         # Figure (5): Spatial maps of EOFs
         # Figure (6): Time series of principal components, GSI
@@ -108,7 +114,7 @@ def run_cesm_ihesp():
                     save=fig_save,sv_pth=fig_pth, sv_name='alt_tseries_pc_' + str(pc_to_plot))
 
             spatial_scatter(gsi_lon,gsi_lat,eofs_gsi[pc_to_plot-1],title = 'EOF' + str(pc_to_plot) + '(% Var = ' +
-                            '%1.2f' % (per_var[pc_to_plot-1].data*100) + ')',label = 'EOF' + str(pc_to_plot),
+                            '%1.2f' % (per_var_gsi[pc_to_plot-1].data*100) + ')',label = 'EOF' + str(pc_to_plot),
                             save=fig_save,sv_pth=fig_pth, sv_name='alt_spatial_gsi_eof_' + str(pc_to_plot))
 
             ts_plot(ds.time, pcs_gsi[:,pc_to_plot-1],label1 = 'PC' + str(pc_to_plot),x_data_2 = ds.time, y_data_2 = gsi_norm, label2= 'GSI',
@@ -120,6 +126,7 @@ def run_cesm_ihesp():
 
         alt_gsi_sd[e] = var_magnitude(ds,gsi_lon,gsi_lat)
         alt_damp_t[e]  = damping_time_scale(acf)
+        alt_damp_s[e] = damping_spatial_scale(acf_spatial[e,:])
         alt_cross[e,:], alt_var[e,:] = eof_crossings(eofs_gsi, per_var_gsi)
 
-    return(alt_gsi_sd,alt_damp_t,alt_cross, alt_var)
+    return(alt_gsi_sd,alt_damp_t,alt_damp_s,alt_cross, alt_var,acf_spatial)

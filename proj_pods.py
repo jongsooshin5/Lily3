@@ -7,6 +7,8 @@ def var_magnitude(dataset, gsi_lon, gsi_lat):
     for x in range(len(gsi_lon)):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
+            a= np.nanargmin(abs(ds.latitude.data - gsi_lat[x]))
+            b= np.nanargmin(abs(ds.longitude.data - gsi_lon[x]))
             std_gsi[x] = std_cm[np.nanargmin(abs(ds.latitude.data - gsi_lat[x])), np.nanargmin(abs(ds.longitude.data - gsi_lon[x]))]
     mn_std_gsi = np.nanmean(std_gsi)
     return(mn_std_gsi)
@@ -17,6 +19,11 @@ def damping_time_scale(acf):
     damping_t = np.where(np.diff(np.sign(find_crossing)))[0][0]+1
     return(damping_t)
 
+def damping_spatial_scale(acf):
+    efold = 1/np.exp(1)
+    find_crossing = acf - efold
+    damping_space = np.where(np.diff(np.sign(find_crossing)))[0][0]+1
+    return(damping_space)
 def eof_crossings(eofs_gsi, per_var_gsi):
     mode_one = np.array([((eofs_gsi.data[0][:-1] * eofs_gsi.data[0][1:]) < 0).sum(),per_var_gsi[0]])
     mode_two = np.array([((eofs_gsi.data[1][:-1] * eofs_gsi.data[1][1:]) < 0).sum(),per_var_gsi[1]])

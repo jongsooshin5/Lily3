@@ -8,23 +8,44 @@ import xarray as xr
 import warnings
 def run_altimetry():
     fig_pth = '/Users/lillienders/Desktop/First Generals/Figures/Altimetry/'
-    fig_save = False
+    fig_save = True
     """
     RUN ANALYSIS FOR OBS (ALTIMETRY)
     """
     # region: Calculations and Plots
 
-    f = '/Users/lillienders/Desktop/First Generals/altimetry_sla_93_18.nc'
+    f = '/Users/lillienders/Desktop/First Generals/Data/Observations/altimetry_sla_93_22.nc'
     ds = tidy_read(f)
+    ds['sla'] = ds['sla'] * 100
     ds['adt'] = (['latitude', 'longitude'], get_contours(f))
+    ds['adt'] = ds['adt']*100
     ds['sla_std'] = (['latitude', 'longitude'], np.nanmean(ds.sla_std.data, axis=0))
+    ds['sla_std'] = ds['sla_std']*100
+    #ds = ds.sel(longitude=slice(279, 310), latitude=slice(32, 46), time=slice('1993-01-01', '2022-12-01'))
+    ds.to_netcdf('altimetric_ssh_clean.nc')
     # Calculate GSI using Joyce method
     gsi_lon_joyce, gsi_lat_joyce, sla_ts_joyce, sla_ts_std_joyce = gs_index_joyce(ds)
     gsi_norm_joyce = (sla_ts_joyce - np.nanmean(sla_ts_joyce))/sla_ts_std_joyce
 
     # Calculate GSI using isoline method
-    gsi_lon, gsi_lat, sla_ts, sla_ts_std = gs_index(ds,ds['adt']*100, alt = True)
-    gsi_norm = (sla_ts - np.nanmean(sla_ts))/sla_ts_std
+    gsi_lon, gsi_lat, sla_ts, sla_ts_std = gs_index(ds,ds['adt'], alt = True)
+    gsi_norm = (sla_ts - np.nanmean(sla_ts))/np.nanstd(sla_ts)
+
+    plt.plot(gsi_norm)
+    plt.show
+    gsi_array = xr.DataArray(
+        data=gsi_norm,
+        dims=['time'],
+        name = 'gsi',
+        coords=dict(
+            time      = ds.time.data
+        ),
+        attrs=dict(
+            description="GSI, 1993-2022",
+            units="-",
+        ),
+    )
+    gsi_array.to_netcdf('/Users/lillienders/Desktop/First Generals/Data/Observations/gsi_array_2.nc')
 
     gsi_annual = smooth_data(gsi_norm)
     gsi_years  = []
@@ -36,6 +57,7 @@ def run_altimetry():
 
     # Calculate ACF, number of effective degrees of freedom
     acf, n_eff = get_acf(gsi_norm)
+
 
     # Calculate EOFs: Full spatial domain
     num_modes = 4
@@ -59,12 +81,14 @@ def run_altimetry():
                                  dims   = ['time', 'lon'])
 
     eofs_gsi, pcs_gsi, per_var_gsi = calc_eofs(sla_gsi_array,num_modes)
-    print(eofs_gsi.data)
+    acf_spatial, n_eff_spatial = get_acf(np.nanmean(sla_gsi,axis=0))
+    #acf_spatial, n_eff_spatial = get_acf(eofs_gsi[0,:])
+
     # end region
     # region: Plots
     # Figure (1): Spatial plot of standard deviation with maximum standard deviation isoline and location of GSI array
-    spatial_plot(ds.longitude, ds.latitude, np.nanstd(ds.sla,axis=0)*100,bthy_data= abs(ds['adt'])*100,
-                 levels = [get_max_contour(ds,ds['adt']*100,contours_to_try = np.linspace(30, 50, 21))], x_gsi = gsi_lon, y_gsi = gsi_lat,
+    spatial_plot(ds.longitude, ds.latitude, np.nanstd(ds.sla,axis=0),bthy_data= abs(ds['adt']),
+                 levels = [get_max_contour(ds,ds['adt'],contours_to_try = np.linspace(30, 50, 21))], x_gsi = gsi_lon, y_gsi = gsi_lat,
                  region='GS', add_gsi = True,add_bathy=True, save=fig_save,sv_pth=fig_pth, sv_name='alt_spatial_std_gsi')
 
     # Figure (2): Time series of monthly and yearly GSI (isoline method)
@@ -79,6 +103,8 @@ def run_altimetry():
     # Figure (4): ACF of GSI timeseries
     acf_plot(acf,n_eff,save=fig_save,sv_pth=fig_pth, sv_name='alt_acf')
 
+    acf_plot(acf_spatial,n_eff_spatial,save=fig_save,sv_pth=fig_pth, sv_name='alt_acf_spatial')
+
     # Figure (5): Spatial maps of EOFs
     # Figure (6): Time series of principal components, GSI
     # Figure (7): Spatial maps of EOFs at GSI array
@@ -90,6 +116,7 @@ def run_altimetry():
         corr_gsi = np.corrcoef(pcs_gsi[:, pc_to_plot - 1], gsi_norm)[0, 1]
 
         spatial_plot_div(gs_slice.longitude, gs_slice.latitude, eofs[pc_to_plot-1], label = 'EOF' + str(pc_to_plot), bthy_data= abs(adt_slice)*100,
+                    title='EOF' + str(pc_to_plot) + '(% Var = ' + '%1.2f' % (per_var[pc_to_plot - 1].data * 100) + ')',
                      levels = 10, add_bathy=fig_save, save=True,sv_pth=fig_pth, sv_name='alt_spatial_eof_' + str(pc_to_plot))
 
         ts_plot(ds.time, pcs[:,pc_to_plot-1],label1 = 'PC' + str(pc_to_plot),x_data_2 = ds.time, y_data_2 = gsi_norm, label2= 'GSI',
@@ -97,6 +124,7 @@ def run_altimetry():
                 save=fig_save,sv_pth=fig_pth, sv_name='alt_tseries_pc_' + str(pc_to_plot))
 
         spatial_scatter(gsi_lon,gsi_lat,eofs_gsi[pc_to_plot-1],label = 'EOF' + str(pc_to_plot),
+                        title='EOF' + str(pc_to_plot) + '(% Var = ' + '%1.2f' % (per_var_gsi[pc_to_plot - 1].data * 100) + ')',
                         save=fig_save,sv_pth=fig_pth, sv_name='alt_spatial_gsi_eof_' + str(pc_to_plot))
 
 
@@ -107,8 +135,9 @@ def run_altimetry():
     eof_longitude(gsi_lon,eofs_gsi, save=fig_save,sv_pth=fig_pth, sv_name='alt_eof_longitude_plt')
     # end region
     # region: PODS
-    alt_gsi_sd = var_magnitude(ds,gsi_lon,gsi_lat)*100
+    alt_gsi_sd = var_magnitude(ds,gsi_lon,gsi_lat)
     alt_damp_t  = damping_time_scale(acf)
+    alt_damp_s = damping_spatial_scale(acf_spatial)
     alt_cross, alt_var   = eof_crossings(eofs_gsi, per_var_gsi)
     # end region
-    return(alt_gsi_sd,alt_damp_t,alt_cross,alt_var)
+    return(alt_gsi_sd,alt_damp_t,alt_damp_s,alt_cross,alt_var,acf_spatial,n_eff_spatial)

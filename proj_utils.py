@@ -6,7 +6,6 @@ from eofs.xarray import Eof
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
-
 def gs_index_joyce(dataset):
     """
     Calculate the Locations of Gulf Stream Indices using Terry Joyce's Maximum Standard Deviation Method (Pérez-Hernández and Joyce (2014))
@@ -51,10 +50,9 @@ def gs_index(dataset, adt, alt = False):
     # Get Gulf Stream Index Locations (Contour w Max Standard Deviation)
     ds = dataset
     if alt == True:
-        x, y = get_contour_info(ds.longitude, ds.latitude, abs(adt),
-                                contour_to_get=get_max_contour(ds, adt, contours_to_try = np.linspace(30, 50, 21)))
+        x, y, std  = get_contour_info(ds,contour_to_get=[33])
     else:
-        x, y = get_contour_info(ds.longitude, ds.latitude, abs(adt), contour_to_get=get_max_contour(ds, adt))
+        x, y, std = get_contour_info(ds, contour_to_get=get_max_contour(ds, adt))
     subset_ind = []
     for k in np.linspace(-70, -55, 16):
         subset_ind.append(np.nanargmin(abs((x - 360) - k)))
@@ -70,35 +68,26 @@ def gs_index(dataset, adt, alt = False):
                 t, np.nanargmin(abs(ds.latitude.data - gsi_lat[x])), np.nanargmin(abs(ds.longitude.data - gsi_lon[x]))]
         sla_ts[t] = np.nanmean(temp)
         sla_ts_std[t] = np.nanstd(temp)
-
+    contour_to_get = get_max_contour(ds, adt, contours_to_try=np.linspace(30, 50, 21))
     return (gsi_lon, gsi_lat, sla_ts, sla_ts_std)
 
 
 def get_max_contour(dataset, adt, contours_to_try = np.linspace(5, 30, 26)):
-    ds = dataset.sel(longitude=slice(290, 308), latitude=slice(36, 45))
-    std_field = np.nanstd(ds.sla, axis=0)
+    ds = dataset.sel(longitude=slice(289, 308), latitude=slice(36, 45))
     std_contours = np.zeros(len(contours_to_try))
     for c in range(len(contours_to_try)):
-        x_temp, y_temp = get_contour_info(ds.longitude, ds.latitude, abs(adt), contour_to_get=int(contours_to_try[c]))
-        temp = 0
-        for x in range(len(x_temp)):
-            temp = temp + std_field[
-                np.nanargmin(abs(ds.latitude.data - y_temp[x])), np.nanargmin(abs(ds.longitude.data - x_temp[x]))]
-        std_contours[c] = temp/len(x_temp)
+        x_temp, y_temp, std_contours[c] = get_contour_info(ds, contour_to_get=int(contours_to_try[c]))
     contour_to_use = int(contours_to_try[np.nanargmax(std_contours)])
     return (contour_to_use)
 
+def get_contour_info(ds, contour_to_get=40):
+    ds = ds.sel(longitude=slice(289, 308), latitude=slice(36, 45))
+    x_data = ds.longitude
+    y_data = ds.latitude
+    std_field = np.nanstd(ds.sla, axis=0)
 
-def get_contour_info(x_data, y_data, bthy_data, contour_to_get=40):
-    bbox = [280, 308, 33, 46]  # bind contours to GS region
-
-    lon_min = np.nanargmin(abs(x_data - bbox[0]))
-    lon_max = np.nanargmin(abs(x_data - bbox[1]))
-    lat_min = np.nanargmin(abs(y_data - bbox[2]))
-    lat_max = np.nanargmin(abs(y_data - bbox[3]))
-
-    contours = plt.contour(x_data[lon_min:lon_max], y_data[lat_min:lat_max],
-                           abs(bthy_data[lat_min:lat_max, lon_min:lon_max]),
+    contours = plt.contour(x_data, y_data,
+                           abs(ds.adt),
                            levels=[contour_to_get], colors='k', zorder=10, linewidths=0.75)
     x, y = [], []
     for item in contours.collections:
@@ -109,15 +98,30 @@ def get_contour_info(x_data, y_data, bthy_data, contour_to_get=40):
             if len(x_temp) > len(x):
                 x = x_temp
                 y = y_temp
+            temp = 0
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=RuntimeWarning)
+                for lon in range(len(x)):
+                    temp = temp + std_field[
+                        np.nanargmin(abs(ds.latitude.data - y[lon])), np.nanargmin(abs(ds.longitude.data - x[lon]))]
+                std_contour = temp/len(x)
     for i in range(0, len(x)):
         for j in range(i + 1, len(x)):
-            if (x[i] - 0.8 < x[j] < x[i] + 0.8):
-                x[j] = np.nan
-                y[j] = np.nan
+            if (x[i] - 0.1 < x[j] < x[i] + 0.1):
+                if y[j] > y[i]:
+                    x[i] = np.nan
+                    y[i] = np.nan
     x = x[~np.isnan(x)]
     y = y[~np.isnan(y)]
+    x_lon = np.array([289.875, 290.875, 291.875, 292.875, 293.875, 294.875, 295.875, 296.875, 297.875,
+         298.875, 299.875, 300.875, 301.875, 302.875,303.875, 304.875])
+    check_x_ord = x[0] > x[-1]
+    if x[0] > x[-1]:
+        x = np.flip(x)
+        y = np.flip(y)
+    y_lat = np.interp(x_lon,x,y)
     plt.close()
-    return (x, y)
+    return (x_lon, y_lat, std_contour)
 
 def smooth_data(t_series, window=12):
     t_series_smoothed = np.zeros(int(len(t_series) / window))
@@ -128,7 +132,10 @@ def smooth_data(t_series, window=12):
 
 def get_acf(t_series):
     acf = sm.tsa.stattools.acf(t_series, adjusted=False, nlags=59)
-    tau = int(np.squeeze(np.argwhere(np.diff(np.sign(acf)))[0]))
+    if len(np.argwhere(np.diff(np.sign(acf)))) == 0:
+        tau = len(acf)
+    else:
+        tau = int(np.squeeze(np.argwhere(np.diff(np.sign(acf)))[0]))+1
 
     n_eff = np.zeros(len(t_series))
     for t in range(len(t_series)):
@@ -147,3 +154,27 @@ def calc_eofs(array, num_modes=1):
     pcs = np.squeeze(solver.pcs(npcs=num_modes, pcscaling=1))
     per_var = solver.varianceFraction()
     return (eofs, pcs, per_var)
+
+def lagged_corrs(var_one,var_two,nlags):
+    """
+        Calculate lagged correlation coeffients (Pearson Correlation)
+        Inputs:
+        - var_one: first variable in correlation [time x lat x longitude] of type xarray
+        - var_two: second variable in correlation [time x lat x longitude] of type xarray (must have same dimensions as var_one)
+        - nlags: number of lags to compute. will compute this number of positive lags, and the same amount of negative lags,
+                    for a total of 2*nlags+1 lags. At positive lags, var_one lags, at negative lags, var_one leads
+        Returns:
+        - corr_array: matrix of correlation coefficients [2*nlags+1 x lat x lon]
+    """
+    lags     = np.arange(-nlags,nlags+1,1)
+
+    corr_mat = np.zeros((len(lags),var_one.shape[1],var_one.shape[2]))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        for lag in lags:
+            var_one_temp = var_one.shift(time=lag)
+            corr_mat[lag + nlags,:,:] = xr.corr(var_one_temp,var_two,dim = 'time')
+    corr_array  = xr.DataArray(corr_mat,
+                            coords={'lag': lags,'latitude': var_one.latitude,'longitude': var_two.longitude},
+                            dims=['lag', 'latitude', 'longitude'])
+    return(corr_array)

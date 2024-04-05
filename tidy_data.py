@@ -46,8 +46,9 @@ def rmv_clm(dataset):
     ds = dataset
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
-        for var in list(ds.data_vars):
-            ds[var] = ds[var] - np.nanmean(ds[var], axis=0)
+        #for var in list(ds.data_vars):
+        #    ds[var] = ds[var] - np.nanmean(ds[var], axis=0)
+        ds['sla'] = ds['sla'] - np.nanmean(ds['sla'], axis=0)
     dataset = ds
     return (dataset)
 
